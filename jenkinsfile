@@ -21,7 +21,7 @@ node {
 
     stage('Push image') {
         /* Finally, we'll push the image into Docker Hub */
-        // here providng dockerhub url and it's credentials that we have provided in jenkins
+        // It provides dockerhub url and it's credentials that we have provided in jenkins
         docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
             app.push("latest")
         }
