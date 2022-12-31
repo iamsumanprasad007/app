@@ -1,4 +1,5 @@
 // Added test to the Pipeline functionality 
+
 var assert = require('assert')
 
 function test() {
