@@ -1,4 +1,4 @@
-// Added test to the Pipeline functionality 
+// Added test.js file to test the Pipeline functionality 
 
 var assert = require('assert')
 
