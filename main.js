@@ -1,3 +1,4 @@
+// Template of the application
 // load the http module
 var http = require('http');
 
