@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:15-alpine
+    container_name: toplist-db
+    environment:
+      POSTGRES_DB: toplistdb
+      POSTGRES_USER: toplist
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - toplist-network
+
+  # Spring Boot Backend
+  backend:
+    build: 
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: toplist-backend
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_URL: jdbc:postgresql://database:5432/toplistdb
+      SPRING_DATASOURCE_USERNAME: toplist
+      SPRING_DATASOURCE_PASSWORD: password123
+    ports:
+      - "8080:8080"
+    depends_on:
+      - database
+    networks:
+      - toplist-network
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+    container_name: toplist-frontend
+    ports:
+      - "3000:80"
+    environment:
+      REACT_APP_API_URL: http://localhost:8080/api
+    depends_on:
+      - backend
+    networks:
+      - toplist-network
+
+volumes:
+  postgres_data:
+
+networks:
+  toplist-network:
+    driver: bridge

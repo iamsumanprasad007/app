@@ -1,14 +1,43 @@
-# Set the base image to be the latest Node.js (so, won't change everytime with lastest updates)
-FROM node:10.9.0
+# Multi-stage Dockerfile for TopList Application
 
-# Copy our application into the working directory of docker container image
-COPY . .
+# Stage 1: Build React Frontend
+FROM node:18-alpine AS frontend-build
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+COPY frontend/ ./
+RUN npm run build
 
-# Install dependencies of our application using NPM 
-RUN npm install
+# Stage 2: Build Java Backend
+FROM maven:3.9.0-openjdk-17-slim AS backend-build
+WORKDIR /app
+COPY pom.xml ./
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Document the port our app will be listening on [avoid writing -p explicitly]
-EXPOSE 8000
+# Stage 3: Production Runtime
+FROM openjdk:17-jdk-slim
+WORKDIR /app
 
-# Tell Docker what command to run when starting container
-CMD npm start
+# Install nginx for serving frontend
+RUN apt-get update && apt-get install -y nginx && rm -rf /var/lib/apt/lists/*
+
+# Copy built backend jar
+COPY --from=backend-build /app/target/*.jar app.jar
+
+# Copy built frontend
+COPY --from=frontend-build /app/frontend/build /var/www/html
+
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/nginx.conf
+
+# Create startup script
+RUN echo '#!/bin/bash\n\
+nginx &\n\
+java -jar app.jar' > /app/start.sh && chmod +x /app/start.sh
+
+# Expose ports
+EXPOSE 80 8080
+
+# Start both services
+CMD ["/app/start.sh"]
