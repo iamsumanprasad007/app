@@ -1,5 +1,5 @@
 # Backend-only Dockerfile for Docker Compose
-FROM maven:3.9.0-openjdk-17-slim AS build
+FROM maven:latest AS build
 WORKDIR /app
 COPY pom.xml ./
 COPY src ./src

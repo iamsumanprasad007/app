@@ -9,7 +9,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Build Java Backend
-FROM maven:3.9.0-openjdk-17-slim AS backend-build
+FROM maven:latest AS backend-build
 WORKDIR /app
 COPY pom.xml ./
 COPY src ./src
