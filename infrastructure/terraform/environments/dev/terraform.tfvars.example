@@ -1,0 +1,25 @@
+# Example Terraform Variables File
+# Copy this file to terraform.tfvars and update the values
+
+# AWS Configuration
+aws_region = "us-west-2"
+
+# Cluster Configuration
+cluster_name = "toplist-k8s"
+environment  = "dev"
+
+# AWS Key Pair (must exist in your AWS account)
+key_name = "k8s-cluster"
+
+# Network Configuration
+vpc_cidr             = "10.0.0.0/16"
+public_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
+private_subnet_cidrs = ["10.0.10.0/24", "10.0.20.0/24"]
+
+# Instance Configuration
+master_instance_type = "t3.medium"  # 2 vCPU, 4GB RAM
+worker_instance_type = "t3.small"   # 2 vCPU, 2GB RAM
+worker_count         = 2
+
+# Optional: Domain Configuration
+# domain_name = "example.com"  # Uncomment and set your domain

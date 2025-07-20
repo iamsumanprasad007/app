@@ -1,0 +1,210 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: haproxy-ingress-serviceaccount
+  namespace: haproxy-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: haproxy-ingress-clusterrole
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - endpoints
+  - nodes
+  - pods
+  - secrets
+  - services
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions
+  - networking.k8s.io
+  resources:
+  - ingresses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - extensions
+  - networking.k8s.io
+  resources:
+  - ingresses/status
+  verbs:
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: haproxy-ingress-role
+  namespace: haproxy-controller
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - pods
+  - secrets
+  - namespaces
+  verbs:
+  - get
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  resourceNames:
+  - ingress-controller-leader-haproxy
+  verbs:
+  - get
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - create
+- apiGroups:
+  - ""
+  resources:
+  - endpoints
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: haproxy-ingress-clusterrolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: haproxy-ingress-clusterrole
+subjects:
+- kind: ServiceAccount
+  name: haproxy-ingress-serviceaccount
+  namespace: haproxy-controller
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: haproxy-ingress-rolebinding
+  namespace: haproxy-controller
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: haproxy-ingress-role
+subjects:
+- kind: ServiceAccount
+  name: haproxy-ingress-serviceaccount
+  namespace: haproxy-controller
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy-ingress
+  namespace: haproxy-controller
+  labels:
+    run: haproxy-ingress
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: haproxy-ingress
+  template:
+    metadata:
+      labels:
+        run: haproxy-ingress
+    spec:
+      serviceAccountName: haproxy-ingress-serviceaccount
+      containers:
+      - name: haproxy-ingress
+        image: haproxytech/kubernetes-ingress:latest
+        args:
+        - --configmap=haproxy-controller/haproxy-ingress
+        - --default-backend-service=toplist/toplist-frontend
+        ports:
+        - name: http
+          containerPort: 80
+        - name: https
+          containerPort: 443
+        - name: stat
+          containerPort: 1024
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 1024
+          initialDelaySeconds: 30
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 1024
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        env:
+        - name: TZ
+          value: "Etc/UTC"
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-ingress
+  namespace: haproxy-controller
+  labels:
+    run: haproxy-ingress
+spec:
+  type: NodePort
+  ports:
+  - name: http
+    port: 80
+    targetPort: 80
+    nodePort: 30080
+    protocol: TCP
+  - name: https
+    port: 443
+    targetPort: 443
+    nodePort: 30443
+    protocol: TCP
+  - name: stat
+    port: 1024
+    targetPort: 1024
+    nodePort: 31024
+    protocol: TCP
+  selector:
+    run: haproxy-ingress
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: haproxy-ingress
+  namespace: haproxy-controller
+data:
+  servers-increment: "42"
+  ssl-redirect: "false"
