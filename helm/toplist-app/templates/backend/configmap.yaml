@@ -1,0 +1,36 @@
+{{- if .Values.backend.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "toplist-app.fullname" . }}-backend-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "toplist-app.backend.labels" . | nindent 4 }}
+data:
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+  SPRING_DATASOURCE_URL: "jdbc:postgresql://{{ include "toplist-app.postgresql.fullname" . }}:5432/{{ .Values.postgresql.auth.database }}"
+  SPRING_DATASOURCE_USERNAME: "{{ .Values.postgresql.auth.username }}"
+  SPRING_DATASOURCE_DRIVER_CLASS_NAME: "org.postgresql.Driver"
+  SPRING_JPA_DATABASE_PLATFORM: "org.hibernate.dialect.PostgreSQLDialect"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_JPA_SHOW_SQL: "false"
+  SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL: "true"
+  SPRING_JPA_DEFER_DATASOURCE_INITIALIZATION: "true"
+  SERVER_PORT: "{{ .Values.backend.service.targetPort }}"
+  LOGGING_LEVEL_COM_TOPLIST: "INFO"
+  LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB: "INFO"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,metrics,prometheus"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "when-authorized"
+  MANAGEMENT_METRICS_EXPORT_PROMETHEUS_ENABLED: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "toplist-app.fullname" . }}-backend-secret
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "toplist-app.backend.labels" . | nindent 4 }}
+type: Opaque
+data:
+  SPRING_DATASOURCE_PASSWORD: {{ .Values.postgresql.auth.password | b64enc | quote }}
+{{- end }}

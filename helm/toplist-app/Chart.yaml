@@ -1,0 +1,27 @@
+apiVersion: v2
+name: toplist-app
+description: A Helm chart for TopList application - A dynamic top list application with Spring Boot backend and React frontend
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+home: https://github.com/iamsumanprasad007/app
+sources:
+  - https://github.com/iamsumanprasad007/app
+maintainers:
+  - name: TopList Team
+    email: team@toplist.com
+keywords:
+  - toplist
+  - spring-boot
+  - react
+  - postgresql
+  - kubernetes
+annotations:
+  category: Application
+dependencies:
+  - name: postgresql
+    version: "12.x.x"
+    repository: "https://charts.bitnami.com/bitnami"
+    condition: postgresql.enabled
+    tags:
+      - database
