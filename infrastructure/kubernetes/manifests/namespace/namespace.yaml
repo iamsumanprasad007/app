@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: toplist
+  labels:
+    name: toplist
+    app: toplist-application
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: haproxy-controller
+  labels:
+    name: haproxy-controller
