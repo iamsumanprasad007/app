@@ -1,0 +1,260 @@
+# Default values for toplist-app
+# This is a YAML-formatted file.
+
+# Global configuration
+global:
+  imageRegistry: ""
+  imagePullSecrets: []
+  storageClass: ""
+
+# Application metadata
+nameOverride: ""
+fullnameOverride: ""
+
+# Backend configuration
+backend:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    registry: docker.io
+    repository: your-dockerhub-username/toplist-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+    
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+    annotations: {}
+    
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 250m
+      memory: 512Mi
+      
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+    targetMemoryUtilizationPercentage: 80
+    
+  livenessProbe:
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+    
+  readinessProbe:
+    httpGet:
+      path: /actuator/health
+      port: 8080
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    
+  env:
+    - name: SPRING_PROFILES_ACTIVE
+      value: "kubernetes"
+    - name: SPRING_DATASOURCE_URL
+      value: "jdbc:postgresql://{{ include \"toplist-app.postgresql.fullname\" . }}:5432/{{ .Values.postgresql.auth.database }}"
+    - name: SPRING_DATASOURCE_USERNAME
+      value: "{{ .Values.postgresql.auth.username }}"
+    - name: SPRING_DATASOURCE_PASSWORD
+      valueFrom:
+        secretKeyRef:
+          name: "{{ include \"toplist-app.postgresql.secretName\" . }}"
+          key: "{{ include \"toplist-app.postgresql.userPasswordKey\" . }}"
+          
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+
+# Frontend configuration
+frontend:
+  enabled: true
+  replicaCount: 2
+  
+  image:
+    registry: docker.io
+    repository: your-dockerhub-username/toplist-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+    
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 80
+    annotations: {}
+    
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      
+  autoscaling:
+    enabled: false
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+    
+  livenessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 30
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+    
+  readinessProbe:
+    httpGet:
+      path: /
+      port: 80
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  
+  podAnnotations: {}
+  podSecurityContext: {}
+  securityContext: {}
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: "haproxy"
+  annotations:
+    kubernetes.io/ingress.class: "haproxy"
+    haproxy.org/load-balance: "roundrobin"
+    haproxy.org/check: "true"
+    haproxy.org/forwarded-for: "true"
+  hosts:
+    - host: toplist.local
+      paths:
+        - path: /api
+          pathType: Prefix
+          backend:
+            service:
+              name: backend
+              port:
+                number: 8080
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: frontend
+              port:
+                number: 80
+  tls: []
+
+# HAProxy Ingress Controller
+haproxy:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    registry: docker.io
+    repository: haproxytech/kubernetes-ingress
+    tag: "latest"
+    pullPolicy: IfNotPresent
+    
+  service:
+    type: NodePort
+    ports:
+      http:
+        port: 80
+        targetPort: 80
+        nodePort: 30080
+      https:
+        port: 443
+        targetPort: 443
+        nodePort: 30443
+      stats:
+        port: 1024
+        targetPort: 1024
+        nodePort: 31024
+        
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+      
+  config:
+    servers-increment: "42"
+    ssl-redirect: "false"
+
+# PostgreSQL configuration (using Bitnami chart)
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: "admin123"
+    username: "toplist"
+    password: "password123"
+    database: "toplistdb"
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+      storageClass: ""
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+      requests:
+        cpu: 250m
+        memory: 256Mi
+  metrics:
+    enabled: false
+
+# Monitoring configuration
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
+    serviceMonitor:
+      enabled: false
+      namespace: monitoring
+      labels: {}
+      interval: 30s
+      scrapeTimeout: 10s
+      
+# Service Account
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  maxUnavailable: ""
+
+# Network Policy
+networkPolicy:
+  enabled: false
+  ingress: []
+  egress: []
